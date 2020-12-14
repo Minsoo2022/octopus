@@ -48,7 +48,7 @@ def main(weights, name, segm_dir, pose_dir, out_dir, opt_pose_steps, opt_shape_s
     pred = model.predict(segmentations, joints_2d)
 
     os.makedirs(out_dir, exist_ok=True)
-    write_mesh_custom('{}/{}.obj'.format(out_dir, name), pred['vertices'][0], pred['faces'])
+    write_mesh_custom(os.path.join(out_dir,name+'.obj'), pred['vertices'][0], pred['faces'])
     width = 1080
     height = 1080
     camera_c = [540.0, 540.0]
@@ -93,7 +93,7 @@ if __name__ == '__main__':
         default=1080)
 
     args = parser.parse_args()
-    name = args.dir.split('/')[-1]
+    name = ' '.join((args.dir).split('/')).split()[-1]
     segm_dir = os.path.join(args.dir,'segmentations')
     pose_dir = os.path.join(args.dir, 'keypoints')
     out_dir = args.dir
