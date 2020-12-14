@@ -2,6 +2,9 @@
 
 This repository contains code corresponding to the paper **Learning to Reconstruct People in Clothing from a Single RGB Camera**.
 
+## Inference
+python infer.py {data_dir}
+
 ## Installation
 
 Download and install DIRT: https://github.com/pmh47/dirt.
