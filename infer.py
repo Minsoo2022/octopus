@@ -2,14 +2,15 @@ import os
 import argparse
 import tensorflow as tf
 import keras.backend as K
+import pickle
 
 from glob import glob
 
-from lib.io import openpose_from_file, read_segmentation, write_mesh
+from lib.io import openpose_from_file, read_segmentation, write_mesh, write_mesh_custom
 from model.octopus import Octopus
 
 
-def main(weights, name, segm_dir, pose_dir, out_dir, opt_pose_steps, opt_shape_steps):
+def main(weights, name, segm_dir, pose_dir, out_dir, opt_pose_steps, opt_shape_steps, opt_size):
     segm_files = sorted(glob(os.path.join(segm_dir, '*.png')))
     pose_files = sorted(glob(os.path.join(pose_dir, '*.json')))
 
@@ -19,13 +20,15 @@ def main(weights, name, segm_dir, pose_dir, out_dir, opt_pose_steps, opt_shape_s
     K.set_session(tf.Session(config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))))
 
     model = Octopus(num=len(segm_files))
+    #Octopus 모델은 그대로 1080,1080 기준으로 생성
     model.load(weights)
 
     segmentations = [read_segmentation(f) for f in segm_files]
 
     joints_2d, face_2d = [], []
     for f in pose_files:
-        j, f = openpose_from_file(f)
+        #pose를 720 기준으로 스케일링
+        j, f = openpose_from_file(f, resolution=(opt_size,opt_size))
 
         assert(len(j) == 25)
         assert(len(f) == 70)
@@ -44,7 +47,21 @@ def main(weights, name, segm_dir, pose_dir, out_dir, opt_pose_steps, opt_shape_s
     print('Estimating shape...')
     pred = model.predict(segmentations, joints_2d)
 
-    write_mesh('{}/{}.obj'.format(out_dir, name), pred['vertices'][0], pred['faces'])
+    os.makedirs(out_dir, exist_ok=True)
+    write_mesh_custom('{}/{}.obj'.format(out_dir, name), pred['vertices'][0], pred['faces'])
+    width = 1080
+    height = 1080
+    camera_c = [540.0, 540.0]
+    camera_f = [1080, 1080]
+    vertices = pred['vertices']
+
+    data_to_save = {'width': width, 'camera_c': camera_c, 'vertices': vertices, 'camera_f': camera_f, 'height':height }
+
+    pickle_out = open('{}/frame_data.pkl'.format(out_dir), "wb")
+    pickle.dump(data_to_save, pickle_out)
+    pickle_out.close()
+
+    print('Done.')
 
     print('Done.')
 
@@ -53,37 +70,32 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        'name',
+        'dir',
         type=str,
-        help="Sample name")
+        help="Dataset dir")
 
     parser.add_argument(
-        'segm_dir',
-        type=str,
-        help="Segmentation images directory")
-
-    parser.add_argument(
-        'pose_dir',
-        type=str,
-        help="2D pose keypoints directory")
-
-    parser.add_argument(
-        '--opt_steps_pose', '-p', default=5, type=int,
+        '--opt_steps_pose', '-p', default=20, type=int,
         help="Optimization steps pose")
 
     parser.add_argument(
-        '--opt_steps_shape', '-s', default=15, type=int,
+        '--opt_steps_shape', '-s', default=30, type=int,
         help="Optimization steps")
-
-    parser.add_argument(
-        '--out_dir', '-od',
-        default='out',
-        help='Output directory')
 
     parser.add_argument(
         '--weights', '-w',
         default='weights/octopus_weights.hdf5',
         help='Model weights file (*.hdf5)')
 
+    parser.add_argument(
+        '--size',
+        type=int,
+        default=1080)
+
     args = parser.parse_args()
-    main(args.weights, args.name, args.segm_dir, args.pose_dir, args.out_dir, args.opt_steps_pose, args.opt_steps_shape)
+    name = args.dir.split('/')[-1]
+    segm_dir = os.path.join(args.dir,'segmentations')
+    pose_dir = os.path.join(args.dir, 'keypoints')
+    out_dir = args.dir
+
+    main(args.weights, name, segm_dir, pose_dir, out_dir, args.opt_steps_pose, args.opt_steps_shape, args.size)

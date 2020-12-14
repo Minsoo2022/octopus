@@ -55,3 +55,19 @@ def write_mesh(filename, v, f):
     with open(filename, 'w') as fp:
         fp.write(('v {:f} {:f} {:f}\n' * len(v)).format(*v.reshape(-1)))
         fp.write(('f {:d} {:d} {:d}\n' * len(f)).format(*(f.reshape(-1) + 1)))
+
+def write_mesh_custom(filename, v, f):
+    name = filename.split('/')[-1].split('.')[0]
+    with open('obj_info.txt', 'r') as f_info:
+        info = f_info.readlines()
+    with open('mtl_info.txt', 'r') as m_info:
+        mtl_info = m_info.readlines()
+    with open(filename, 'w') as fp:
+        fp.write('mtlib %s.mtl\n'%(name))
+        fp.write(('v {:f} {:f} {:f}\n' * len(v)).format(*v.reshape(-1)))
+        fp.write(''.join(info))
+        fp.write('\nusemtl Mymtl')
+
+    with open(filename.replace('.obj','.mtl'),'w') as fm:
+        fm.write(''.join(mtl_info))
+        fm.write('map_Kd %s.jpg'%(name))
