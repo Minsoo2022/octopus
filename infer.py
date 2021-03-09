@@ -10,7 +10,7 @@ from lib.io import openpose_from_file, read_segmentation, write_mesh, write_mesh
 from model.octopus import Octopus
 
 
-def main(weights, name, segm_dir, pose_dir, out_dir, opt_pose_steps, opt_shape_steps, opt_size):
+def main(weights, name, segm_dir, pose_dir, out_dir, opt_pose_steps, opt_shape_steps, opt_size, cal_trans):
     segm_files = sorted(glob(os.path.join(segm_dir, '*.png')))
     pose_files = sorted(glob(os.path.join(pose_dir, '*.json')))
 
@@ -48,6 +48,11 @@ def main(weights, name, segm_dir, pose_dir, out_dir, opt_pose_steps, opt_shape_s
     pred = model.predict(segmentations, joints_2d)
 
     os.makedirs(out_dir, exist_ok=True)
+    if cal_trans:
+        pickle_out = open('{}/octopus_trans.pkl'.format(out_dir), "wb")
+        pickle.dump([list(pred['trans'][0])], pickle_out)
+        pickle_out.close()
+        return
     write_mesh_custom(os.path.join(out_dir,name+'.obj'), pred['vertices'][0], pred['faces'])
     width = 1080
     height = 1080
@@ -92,10 +97,14 @@ if __name__ == '__main__':
         type=int,
         default=1080)
 
+    parser.add_argument(
+        '--cal_trans',
+        action='store_true')
+
     args = parser.parse_args()
     name = ' '.join((args.dir).split('/')).split()[-1]
     segm_dir = os.path.join(args.dir,'segmentations')
     pose_dir = os.path.join(args.dir, 'keypoints')
     out_dir = args.dir
 
-    main(args.weights, name, segm_dir, pose_dir, out_dir, args.opt_steps_pose, args.opt_steps_shape, args.size)
+    main(args.weights, name, segm_dir, pose_dir, out_dir, args.opt_steps_pose, args.opt_steps_shape, args.size, args.cal_trans)
