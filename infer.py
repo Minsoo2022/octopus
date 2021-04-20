@@ -53,7 +53,7 @@ def main(weights, name, segm_dir, pose_dir, out_dir, opt_pose_steps, opt_shape_s
         pickle.dump([list(pred['trans'][0])], pickle_out)
         pickle_out.close()
         return
-    write_mesh_custom(os.path.join(out_dir,name+'.obj'), pred['vertices'][0], pred['faces'])
+    write_mesh_custom(os.path.join(out_dir,name+'_octopus'+'.obj'), pred['vertices'][0], pred['faces'])
     width = 1080
     height = 1080
     camera_c = [540.0, 540.0]
